@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -13,7 +14,9 @@ func getUpdates(url string, offset int) ([]Update, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer resp.Body.Close()
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -24,59 +27,65 @@ func getUpdates(url string, offset int) ([]Update, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return restResponse.Result, nil
 }
 
-func requestToChatGPT(Update Update, chatGPTAPIToken string, ChatGptApiCompletionsURL string) (Update, error) {
+func requestToChatGPT(update Update, chatGPTAPIToken string, ChatGptApiCompletionsURL string) (Update, error) {
 	var ChatRequest ChatRequest
+
 	ChatRequest.Model = "gpt-3.5-turbo"
 	ChatRequest.Messages[0].Role = "user"
-	ChatRequest.Messages[0].Content = Update.Message.Text
+	ChatRequest.Messages[0].Content = update.Message.Text
 
 	buf, err := json.Marshal(ChatRequest)
 	if err != nil {
-		Update.Message.Text = "Error code, try again later"
-		return Update, err
+		return Update{}, fmt.Errorf("Error in marshalling chat gpt request: %w", err)
 	}
+
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Authorization", "Bearer "+chatGPTAPIToken)
+
 	req, err := http.NewRequest("POST", ChatGptApiCompletionsURL, bytes.NewBuffer(buf))
 	if err != nil {
-		Update.Message.Text = "Error while preparing HTTP request, try again later"
-		return Update, err
+		return Update{}, fmt.Errorf("Error while creating chat gpt http request: %w", err)
 	}
+
 	req.Header = headers
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		Update.Message.Text = "Requesting ChatGPT API went wrong, try again later"
-		return Update, err
+		return Update{}, fmt.Errorf("Error while requesting chat gpt: %w", err)
 	}
+
+	defer resp.Body.Close()
 
 	var СhatResponse СhatResponse
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		Update.Message.Text = "Error serializing ChatGPT answer, try again later"
-		return Update, err
-	}
-	err = json.Unmarshal(bodyBytes, &СhatResponse)
-	if err != nil {
-		Update.Message.Text = "Error serializing ChatGPT answer, try again later"
-		return Update, err
+		update.Message.Text = "Error serializing ChatGPT answer, try again later"
+		return Update{}, fmt.Errorf("Error while serializing chat gpt http answer: %w", err)
 	}
 
-	defer resp.Body.Close()
-	if len(СhatResponse.Choices) != 0 {
-		Update.Message.Text = СhatResponse.Choices[0].Message.Content
-	} else {
-		Update.Message.Text = "Error in Open AI response, please wait 5 seconds before your next request"
+	err = json.Unmarshal(bodyBytes, &СhatResponse)
+	if err != nil {
+		return Update{}, fmt.Errorf("Error while unmarshalling chat gpt http request: %w", err)
 	}
-	return Update, nil
+
+	if len(СhatResponse.Choices) != 0 {
+		update.Message.Text = СhatResponse.Choices[0].Message.Content
+	} else {
+		update.Message.Text = "Error in Open AI response, please wait 5 seconds before your next request"
+	}
+
+	return update, nil
 }
 
 func sendMessage(Update Update, botUrl string) error {
 	var MessageToSend MessageToSend
+
 	MessageToSend.Text = Update.Message.Text
 	MessageToSend.ChatId = Update.Message.Chat.ChatId
 
@@ -84,6 +93,7 @@ func sendMessage(Update Update, botUrl string) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = http.Post(
 		botUrl+"/sendMessage",
 		"application/json",
@@ -92,6 +102,6 @@ func sendMessage(Update Update, botUrl string) error {
 	if err != nil {
 		return err
 	}
-	return nil
 
+	return nil
 }
