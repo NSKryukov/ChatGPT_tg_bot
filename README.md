@@ -11,7 +11,6 @@ Telegram bot that responds to user's messages with responses from Chat GPT versi
 
 # Quick start
 
-**Important** You need to have Telegram Bot Token (ask BotFather about it) and Open AI API Key (go to [OpenAI API keys generate link](https://platform.openai.com/account/api-keys)). To specify them add environment variables ```OPENAI_API_KEY``` and ```CHAT_BOT_TOKEN``` to your machine or specify at startup flags ```-key=<OPENAI_API_KEY> -token=<CHAT_BOT_TOKEN>```. Also, you can mix it, for example, specify OPENAI_API_KEY as environment variable and CHAT_BOT_TOKEN as flag at startup
-
-* If you have Golang installed on your machine do ```go run .``` in directory with code
+**Important** You need to have Telegram Bot Token (ask BotFather about it) and Open AI API Key (go to [OpenAI API keys generate link](https://platform.openai.com/account/api-keys)). Specify at startup flags ```-key=<OPENAI_API_KEY> -token=<CHAT_BOT_TOKEN>```.
+* If you have Golang installed on your machine do ```go run . -key=<OPENAI_API_KEY> -token=<CHAT_BOT_TOKEN``` in directory with code
 * If you have not Golang just download [chatgptprovider.exe](https://github.com/NSKryukov/chatgpt_tg_bot/blob/main/chatgptprovider.exe) file and start it (for Windows OS)
